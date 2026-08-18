@@ -1,1 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S-DES Step-by-Step Animation</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: Arial, sans-serif; background: #f4f7fb; color: #172033;
+  }
+  header {
+    background: linear-gradient(135deg,#123c69,#1976a8);
+    color: white; padding: 24px; text-align: center;
+  }
+  header h1 { margin: 0 0 8px; }
+  header p { margin: 0; opacity: .9; }
+  .container { max-width: 1100px; margin: 22px auto; padding: 0 16px; }
+  .card {
+    background: white; border-radius: 14px; padding: 20px;
+    margin-bottom: 18px; box-shadow: 0 5px 18px rgba(0,0,0,.08);
+  }
+  .inputs {
+    display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 12px;
+  }
+  label { font-weight: bold; font-size: 14px; }
+  input {
+    width: 100%; margin-top: 6px; padding: 10px; border: 1px solid #ccd5e0;
+    border-radius: 8px; font-family: monospace; font-size: 17px;
+  }
+  button {
+    border: 0; border-radius: 8px; padding: 11px 18px; margin: 5px;
+    background: #1976a8; color: white; cursor: pointer; font-weight: bold;
+  }
+  button:hover { opacity: .9; }
+  button.secondary { background: #5f6b7a; }
+  button.green { background: #2e7d32; }
+  .progress {
+    height: 10px; background: #dfe6ee; border-radius: 10px; overflow: hidden; margin: 15px 0;
+  }
+  #bar { height: 100%; width: 0%; background: #1976a8; transition: width .35s; }
+  .step-title { font-size: 23px; margin-bottom: 8px; color: #123c69; }
+  .step-desc { font-size: 16px; line-height: 1.5; }
+  .bits {
+    display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0;
+  }
+  .bit {
+    display: inline-flex; width: 34px; height: 40px; align-items: center;
+    justify-content: center; border-radius: 7px; background: #e8eef5;
+    font: bold 21px monospace; border: 1px solid #cbd5e1;
+  }
+  .bit.active { background: #ffe082; transform: translateY(-2px); }
+  .bit.one { color: #0d47a1; }
+  .bit.zero { color: #455a64; }
+  .flow {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+    gap: 8px; margin: 18px 0;
+  }
+  .box {
+    padding: 13px 16px; border-radius: 10px; background: #edf4fb;
+    border: 1px solid #bdd2e5; text-align: center; min-width: 110px;
+  }
+  .arrow { font-size: 24px; color: #1976a8; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th,td { border: 1px solid #d5dde7; padding: 9px; text-align: center; }
+  th { background: #edf4fb; }
+  code { font-family: Consolas, monospace; }
+  .result {
+    font-size: 28px; font-family: monospace; font-weight: bold;
+    text-align: center; padding: 18px; background: #e8f5e9; border-radius: 10px;
+  }
+  .small { color:#64748b; font-size:13px; }
+  .sboxes { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .sboxes table td { font-family: monospace; }
+  .current { border-left: 5px solid #1976a8; }
+  @media(max-width:650px){ .sboxes{grid-template-columns:1fr;} .bit{width:29px;} }
+</style>
+</head>
+<body>
+<header>
+  <h1>🔐 Simplified DES (S-DES) — Interactive Animation</h1>
+  <p>Step through every operation: IP → E/P → XOR → S-Boxes → P4 → SW → Round 2 → IP⁻¹</p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>1. Inputs</h2>
+    <div class="inputs">
+      <div><label>Plaintext (8 bits)</label><input id="pt" value="10011001"></div>
+      <div><label>K1 (8 bits)</label><input id="k1" value="00111100"></div>
+      <div><label>K2 (8 bits)</label><input id="k2" value="11000011"></div>
+    </div>
+    <p class="small">This animation uses the IP, E/P and P4 tables supplied in the question and the standard S-DES S0/S1 S-Boxes.</p>
+    <button onclick="resetAnimation()">Reset / Load Inputs</button>
+  </div>
+
+  <div class="card">
+    <h2>2. Animation Controls</h2>
+    <button onclick="prevStep()" class="secondary">◀ Previous</button>
+    <button onclick="nextStep()">Next Step ▶</button>
+    <button onclick="autoPlay()" class="green">▶ Auto Play</button>
+    <button onclick="showAll()" class="secondary">Show All</button>
+    <div class="progress"><div id="bar"></div></div>
+    <div id="stepCounter">Step 0 of 16</div>
+  </div>
+
+  <div class="card current">
+    <div class="step-title" id="title">Ready</div>
+    <div class="step-desc" id="description">
+      Click <b>Next Step</b> to begin the S-DES encryption process.
+    </div>
+    <div id="visual"></div>
+  </div>
+
+  <div class="card">
+    <h2>Complete S-DES Flow</h2>
+    <div class="flow">
+      <div class="box">Plaintext<br><code>10011001</code></div><div class="arrow">→</div>
+      <div class="box">IP</div><div class="arrow">→</div>
+      <div class="box">Round 1<br><code>K1</code></div><div class="arrow">→</div>
+      <div class="box">SW</div><div class="arrow">→</div>
+      <div class="box">Round 2<br><code>K2</code></div><div class="arrow">→</div>
+      <div class="box">IP⁻¹</div><div class="arrow">→</div>
+      <div class="box">Ciphertext</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Standard S-Boxes</h2>
+    <div class="sboxes">
+      <div>
+        <h3>S0</h3>
+        <table><tr><th></th><th>00</th><th>01</th><th>10</th><th>11</th></tr>
+          <tr><th>00</th><td>1</td><td>0</td><td>3</td><td>2</td></tr>
+          <tr><th>01</th><td>3</td><td>2</td><td>1</td><td>0</td></tr>
+          <tr><th>10</th><td>0</td><td>2</td><td>1</td><td>3</td></tr>
+          <tr><th>11</th><td>3</td><td>1</td><td>3</td><td>2</td></tr>
+        </table>
+      </div>
+      <div>
+        <h3>S1</h3>
+        <table><tr><th></th><th>00</th><th>01</th><th>10</th><th>11</th></tr>
+          <tr><th>00</th><td>0</td><td>1</td><td>2</td><td>3</td></tr>
+          <tr><th>01</th><td>2</td><td>0</td><td>1</td><td>3</td></tr>
+          <tr><th>10</th><td>3</td><td>0</td><td>1</td><td>0</td></tr>
+          <tr><th>11</th><td>2</td><td>1</td><td>0</td><td>3</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const IP = [6,4,2,8,1,7,3,5];
+const EP = [1,4,3,2,3,2,1,4];
+const P4 = [2,3,4,1];
+const IP_INV = [5,3,7,2,8,1,6,4];
+
+const S0 = [[1,0,3,2],[3,2,1,0],[0,2,1,3],[3,1,3,2]];
+const S1 = [[0,1,2,3],[2,0,1,3],[3,0,1,0],[2,1,0,3]];
+
+let steps = [];
+let current = 0;
+let timer = null;
+
+function permute(bits, table) {
+  return table.map(i => bits[i-1]).join('');
+}
+function xorBits(a,b) {
+  return a.split('').map((x,i) => x === b[i] ? '0' : '1').join('');
+}
+function sbox(bits, box) {
+  const row = parseInt(bits[0] + bits[3], 2);
+  const col = parseInt(bits[1] + bits[2], 2);
+  return box[row][col].toString(2).padStart(2,'0');
+}
+function bitHTML(bits, active=[]) {
+  return '<div class="bits">' + bits.split('').map((b,i) =>
+    `<span class="bit ${b==='1'?'one':'zero'} ${active.includes(i+1)?'active':''}">${b}</span>`
+  ).join('') + '</div>';
+}
+function pairHTML(a,b) {
+  return `<div style="display:flex;gap:25px;flex-wrap:wrap">
+    <div><b>Left</b>${bitHTML(a)}</div>
+    <div><b>Right</b>${bitHTML(b)}</div>
+  </div>`;
+}
+
+function buildSteps() {
+  const pt = document.getElementById('pt').value.trim();
+  const k1 = document.getElementById('k1').value.trim();
+  const k2 = document.getElementById('k2').value.trim();
+
+  if(!/^[01]{8}$/.test(pt) || !/^[01]{8}$/.test(k1) || !/^[01]{8}$/.test(k2)) {
+    alert('Plaintext, K1 and K2 must each contain exactly 8 binary bits.');
+    return false;
+  }
+
+  const ip = permute(pt, IP);
+  const l1 = ip.slice(0,4), r1 = ip.slice(4);
+  const ep1 = permute(r1, EP);
+  const x1 = xorBits(ep1,k1);
+  const s01 = sbox(x1.slice(0,4),S0);
+  const s11 = sbox(x1.slice(4),S1);
+  const sb1 = s01+s11;
+  const p41 = permute(sb1,P4);
+  const nl1 = xorBits(l1,p41);
+  const round1 = nl1+r1;
+  const sw = r1+nl1;
+
+  const l2 = sw.slice(0,4), r2 = sw.slice(4);
+  const ep2 = permute(r2, EP);
+  const x2 = xorBits(ep2,k2);
+  const s02 = sbox(x2.slice(0,4),S0);
+  const s12 = sbox(x2.slice(4),S1);
+  const sb2 = s02+s12;
+  const p42 = permute(sb2,P4);
+  const nl2 = xorBits(l2,p42);
+  const preout = nl2+r2;
+  const cipher = permute(preout,IP_INV);
+
+  steps = [
+    {t:'Step 1 — Initial Permutation (IP)', d:`Apply IP = <code>6 4 2 8 1 7 3 5</code> to plaintext <code>${pt}</code>.`, v:bitHTML(ip), f:`${pt} → ${ip}`},
+    {t:'Step 2 — Split into L and R', d:'Split the IP result into two 4-bit halves.', v:pairHTML(l1,r1), f:`L = ${l1}, R = ${r1}`},
+    {t:'Step 3 — Expansion / Permutation', d:`Apply E/P = <code>1 4 3 2 3 2 1 4</code> to the right half.`, v:bitHTML(ep1), f:`E/P(${r1}) = ${ep1}`},
+    {t:'Step 4 — XOR with K1', d:`XOR the expanded right half with K1 = <code>${k1}</code>.`, v:bitHTML(x1), f:`${ep1} XOR ${k1} = ${x1}`},
+    {t:'Step 5 — S-Box substitution (Round 1)', d:`Split ${x1} into <code>${x1.slice(0,4)}</code> and <code>${x1.slice(4)}</code>. S0 gives ${s01}; S1 gives ${s11}.`, v:`${bitHTML(x1.slice(0,4))}<b>S0 → ${s01}</b>${bitHTML(x1.slice(4))}<b>S1 → ${s11}</b>`, f:`S0(${x1.slice(0,4)}) = ${s01}; S1(${x1.slice(4)}) = ${s11}`},
+    {t:'Step 6 — P4 permutation', d:`Apply P4 = <code>2 3 4 1</code> to S-Box output <code>${sb1}</code>.`, v:bitHTML(p41), f:`P4(${sb1}) = ${p41}`},
+    {t:'Step 7 — XOR with left half', d:`XOR original left half with P4 output.`, v:bitHTML(nl1), f:`${l1} XOR ${p41} = ${nl1}`},
+    {t:'Step 8 — Round 1 output', d:'Combine the new left half with the unchanged right half.', v:bitHTML(round1), f:`${nl1} + ${r1} = ${round1}`},
+    {t:'Step 9 — Swap (SW)', d:'Swap the two 4-bit halves before Round 2.', v:pairHTML(r1,nl1), f:`${round1} → ${sw}`},
+    {t:'Step 10 — Expansion / Permutation (Round 2)', d:'Apply E/P to the new right half.', v:bitHTML(ep2), f:`E/P(${r2}) = ${ep2}`},
+    {t:'Step 11 — XOR with K2', d:`XOR with K2 = <code>${k2}</code>.`, v:bitHTML(x2), f:`${ep2} XOR ${k2} = ${x2}`},
+    {t:'Step 12 — S-Box substitution (Round 2)', d:`S0 gives ${s02}; S1 gives ${s12}.`, v:`${bitHTML(x2.slice(0,4))}<b>S0 → ${s02}</b>${bitHTML(x2.slice(4))}<b>S1 → ${s12}</b>`, f:`S0(${x2.slice(0,4)}) = ${s02}; S1(${x2.slice(4)}) = ${s12}`},
+    {t:'Step 13 — P4 permutation (Round 2)', d:`Apply P4 to <code>${sb2}</code>.`, v:bitHTML(p42), f:`P4(${sb2}) = ${p42}`},
+    {t:'Step 14 — XOR with left half (Round 2)', d:'XOR the Round 2 left half with the P4 output.', v:bitHTML(nl2), f:`${l2} XOR ${p42} = ${nl2}`},
+    {t:'Step 15 — Pre-output block', d:'Combine the Round 2 result with the unchanged right half.', v:bitHTML(preout), f:`${nl2} + ${r2} = ${preout}`},
+    {t:'Step 16 — Inverse IP / Ciphertext', d:`Apply IP⁻¹ = <code>5 3 7 2 8 1 6 4</code>.`, v:`<div class="result">${cipher}</div>`, f:`IP⁻¹(${preout}) = ${cipher}`}
+  ];
+  return true;
+}
+
+function render() {
+  if(!steps.length) return;
+  const s = steps[current-1];
+  document.getElementById('stepCounter').textContent = `Step ${current} of ${steps.length}`;
+  document.getElementById('bar').style.width = ((current/steps.length)*100)+'%';
+  document.getElementById('title').innerHTML = s ? s.t : 'Ready';
+  document.getElementById('description').innerHTML = s ? s.d : '';
+  document.getElementById('visual').innerHTML = s ? `<div class="card" style="background:#f8fafc;margin-top:15px"><b>Calculation:</b> <code>${s.f}</code></div>${s.v}` : '';
+}
+function nextStep() {
+  if(!steps.length) buildSteps();
+  if(current < steps.length) { current++; render(); }
+}
+function prevStep() {
+  if(current > 1) { current--; render(); }
+}
+function autoPlay() {
+  if(timer) { clearInterval(timer); timer=null; return; }
+  if(current >= steps.length) current=0;
+  timer = setInterval(() => {
+    if(current < steps.length) { current++; render(); }
+    else { clearInterval(timer); timer=null; }
+  }, 1400);
+}
+function showAll() {
+  if(!steps.length) buildSteps();
+  current=steps.length; render();
+}
+function resetAnimation() {
+  if(timer) { clearInterval(timer); timer=null; }
+  if(buildSteps()) { current=0; document.getElementById('stepCounter').textContent=`Step 0 of ${steps.length}`; document.getElementById('bar').style.width='0%'; document.getElementById('title').textContent='Ready'; document.getElementById('description').innerHTML='Click <b>Next Step</b> to begin.'; document.getElementById('visual').innerHTML=''; }
+}
+resetAnimation();
+</script>
+</body>
+</html>
 
